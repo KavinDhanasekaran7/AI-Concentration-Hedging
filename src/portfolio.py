@@ -56,6 +56,18 @@ def annual_top_sleeve(month_end_caps: pd.DataFrame, size: int) -> dict[int, list
     return sleeve_by_year
 
 
+def fixed_basket_sleeve(basket: list[str], years: range) -> dict[int, list[str]]:
+    """Assign the same fixed basket to every year (the hindsight AI-basket robustness).
+
+    Args:
+        basket: fixed list of tickers held every year.
+        years: the calendar years to populate.
+    Returns:
+        Dict mapping each year to the (hindsight-selected) basket.
+    """
+    return {year: list(basket) for year in years}
+
+
 def monthly_sleeve_weights(month_end_caps: pd.DataFrame,
                            sleeve_by_year: dict[int, list[str]]) -> pd.DataFrame:
     """Within-sleeve cap weights at each month-end (sum to 1 across the sleeve).
