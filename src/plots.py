@@ -144,6 +144,33 @@ def plot_pput_calibration(modelled: pd.Series, benchmark: pd.Series,
     return ax
 
 
+def plot_cvar_weights(weights: pd.DataFrame, dial_label: str,
+                      filename: str = "cvar_weights.png") -> plt.Axes:
+    """Stacked-area plot of the walk-forward CVaR hedge weights by year.
+
+    Args:
+        weights: yearly weights indexed by year, one column per hedge.
+        dial_label: dial level these weights belong to (for the title).
+        filename: output PNG name.
+    Returns:
+        The Matplotlib Axes.
+    """
+    hedge_colors = {"put": COLORS["primary"], "trend": COLORS["positive"],
+                    "concentration": COLORS["accent"]}
+    colors = [hedge_colors.get(c, COLORS["muted"]) for c in weights.columns]
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.stackplot(weights.index, [weights[c] for c in weights.columns],
+                 labels=list(weights.columns), colors=colors, alpha=0.85)
+    ax.set_title(f"CVaR-optimal hedge mix over time (dial {dial_label}): "
+                 f"the concentration hedge earns weight in stressed years", fontsize=10.5)
+    ax.set_xlabel("Year applied (out of sample)")
+    ax.set_ylabel("Weight in the hedge mix")
+    ax.set_ylim(0, 1)
+    ax.legend(frameon=False, fontsize=9, loc="upper center", ncol=3)
+    _save(fig, filename)
+    return ax
+
+
 def plot_cost_vs_protection(scorecard: pd.DataFrame,
                             filename: str = "cost_vs_protection.png") -> plt.Axes:
     """Scatter the tail-risk removed against the carry cost for every dial x strategy.

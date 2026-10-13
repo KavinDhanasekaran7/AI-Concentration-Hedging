@@ -113,6 +113,72 @@ def put_overlay_returns(underlying: pd.Series, vix: pd.Series, rate_daily: pd.Se
     return pnl.rename(f"put_{tenor_months}m")
 
 
+def _annual_premium_rate(underlying: pd.Series, vix: pd.Series, rate_daily: pd.Series,
+                         multiplier: float, tenor_months: int, otm: float) -> float:
+    """Average annual premium spent per unit notional for a rolled put leg.
+
+    Args:
+        underlying: daily index level.
+        vix: daily VIX level (percent) for the leg's tenor.
+        rate_daily: daily simple risk-free rate.
+        multiplier: VIX-to-sigma scalar m.
+        tenor_months: option tenor in months.
+        otm: out-of-the-money fraction.
+    Returns:
+        Entry premium summed over rolls, divided by the number of years.
+    """
+    data = pd.concat([underlying.rename("S"), vix.rename("vix"),
+                      rate_daily.rename("rf")], axis=1).dropna()
+    annual_rate = np.log1p(data["rf"] * config.TRADING_DAYS_PER_YEAR)
+    spent = 0.0
+    for block in _roll_blocks(data.index, tenor_months):
+        spot0 = data.loc[block[0], "S"]
+        sigma = multiplier * data.loc[block[0], "vix"] / 100.0
+        premium = black_scholes_put(spot0, (1.0 - otm) * spot0, sigma,
+                                    len(block) / config.TRADING_DAYS_PER_YEAR,
+                                    annual_rate.loc[block[0]])
+        spent += premium / spot0
+    years = (data.index[-1] - data.index[0]).days / 365.25
+    return spent / years if years > 0 else float("nan")
+
+
+def put_ladder_overlay(underlying: pd.Series, vix_by_tenor: dict[int, pd.Series],
+                       rate_daily: pd.Series, multiplier: float,
+                       hedge_notional: float = config.HEDGE_NOTIONAL,
+                       tenors: tuple[int, ...] = config.PUT_LADDER_TENORS_MONTHS,
+                       otm: float = config.PUT_OTM,
+                       markup: float = config.PUT_BID_ASK_MARKUP) -> pd.Series:
+    """Daily P&L of a put ladder with an equal premium budget across tenors.
+
+    The total annual premium budget equals that of a single monthly put at the hedge
+    notional; it is split equally across the 1-, 3-, 6- and 12-month legs, so each leg's
+    notional is its share of the budget divided by its own premium rate.
+
+    Args:
+        underlying: daily index level.
+        vix_by_tenor: map of tenor-in-months to the matching daily VIX series.
+        rate_daily: daily simple risk-free rate.
+        multiplier: VIX-to-sigma scalar m.
+        hedge_notional: reference notional setting the total premium budget.
+        tenors: ladder tenors in months.
+        otm: out-of-the-money fraction.
+        markup: bid-ask premium markup.
+    Returns:
+        Daily ladder overlay P&L as a fraction of portfolio value.
+    """
+    monthly_rate = _annual_premium_rate(underlying, vix_by_tenor[1], rate_daily,
+                                        multiplier, 1, otm)
+    leg_budget = hedge_notional * monthly_rate / len(tenors)
+    legs = []
+    for tenor in tenors:
+        vix = vix_by_tenor[tenor]
+        rate = _annual_premium_rate(underlying, vix, rate_daily, multiplier, tenor, otm)
+        notional = leg_budget / rate if rate > 0 else 0.0
+        legs.append(put_overlay_returns(underlying, vix, rate_daily, multiplier,
+                                        notional, tenor, otm, markup))
+    return pd.concat(legs, axis=1).sum(axis=1).rename("put_ladder")
+
+
 def calibrate_put_multiplier(underlying: pd.Series, vix: pd.Series, rate_daily: pd.Series,
                              pput: pd.Series) -> dict[str, float]:
     """Calibrate the VIX multiplier m so index+monthly-put tracks PPUT, then validate.

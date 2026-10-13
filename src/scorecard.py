@@ -53,7 +53,7 @@ def carry_cost(hedged: pd.Series, unhedged: pd.Series,
         Annualised carry cost (positive means the hedge costs return in calm times).
     """
     calm = ~stress_mask(hedged.index, episodes)
-    daily_drag = (unhedged - hedged)[calm].mean()
+    daily_drag = (unhedged.reindex(hedged.index) - hedged)[calm].mean()
     return float(daily_drag * config.TRADING_DAYS_PER_YEAR)
 
 
@@ -145,7 +145,8 @@ def policy_table(scorecard: pd.DataFrame) -> pd.DataFrame:
     best_rows = []
     for dial in scorecard.index.get_level_values("dial").unique():
         block = efficiency.loc[dial].replace([np.inf, -np.inf], np.nan).dropna()
-        positive = block[scorecard.loc[dial, "ES95_reduction_pp"] > 0]
+        mask = (scorecard.loc[dial, "ES95_reduction_pp"] > 0).reindex(block.index).fillna(False)
+        positive = block[mask]
         if positive.empty:
             best_rows.append({"dial": dial, "best_strategy": "do nothing",
                               "es_per_cost": float("nan")})
