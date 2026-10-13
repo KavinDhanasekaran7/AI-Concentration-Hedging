@@ -115,3 +115,64 @@ def plot_enb_calm_vs_stress(enb_table: pd.DataFrame,
     ax.legend(frameon=False, fontsize=8, ncol=4)
     _save(fig, filename)
     return ax
+
+
+def plot_pput_calibration(modelled: pd.Series, benchmark: pd.Series,
+                          filename: str = "pput_calibration.png") -> plt.Axes:
+    """Plot the modelled index+put series against the Cboe PPUT benchmark (growth of 1).
+
+    Args:
+        modelled: modelled monthly returns of index + calibrated monthly put.
+        benchmark: PPUT monthly returns.
+        filename: output PNG name.
+    Returns:
+        The Matplotlib Axes.
+    """
+    aligned = pd.concat([modelled.rename("model"), benchmark.rename("pput")], axis=1).dropna()
+    wealth = (1.0 + aligned).cumprod()
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.plot(wealth.index, wealth["model"], color=COLORS["primary"], lw=1.6,
+            label="Modelled: index + calibrated monthly 5% put")
+    ax.plot(wealth.index, wealth["pput"], color=COLORS["accent"], lw=1.3, ls="--",
+            label="Cboe PPUT benchmark")
+    ax.set_title("Calibrated put model tracks the Cboe PPUT benchmark", fontsize=11)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Growth of $1")
+    ax.grid(True, color=COLORS["muted"], alpha=0.4, lw=0.5)
+    ax.legend(frameon=False, fontsize=9)
+    _save(fig, filename)
+    return ax
+
+
+def plot_cost_vs_protection(scorecard: pd.DataFrame,
+                            filename: str = "cost_vs_protection.png") -> plt.Axes:
+    """Scatter the tail-risk removed against the carry cost for every dial x strategy.
+
+    Args:
+        scorecard: a (dial x strategy) scorecard with carry_cost and ES95_reduction_pp.
+        filename: output PNG name.
+    Returns:
+        The Matplotlib Axes.
+    """
+    strategy_colors = {
+        "put": COLORS["primary"], "trend": COLORS["positive"],
+        "concentration": COLORS["accent"], "naive": COLORS["neutral"],
+        "put_ladder": COLORS["highlight"], "cvar_mix": "#5a3e8e",
+    }
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for (dial, strategy), row in scorecard.iterrows():
+        color = strategy_colors.get(strategy, COLORS["muted"])
+        ax.scatter(row["carry_cost"] * 100, row["ES95_reduction_pp"], color=color, s=55,
+                   alpha=0.85)
+        ax.annotate(dial, (row["carry_cost"] * 100, row["ES95_reduction_pp"]),
+                    fontsize=7, xytext=(3, 3), textcoords="offset points")
+    handles = [plt.Line2D([0], [0], marker="o", ls="", color=c, label=s)
+               for s, c in strategy_colors.items() if s in scorecard.index.get_level_values(1)]
+    ax.legend(handles=handles, frameon=False, fontsize=9, title="strategy")
+    ax.set_title("Tail risk removed versus the carry paid for it (up-left is better)",
+                 fontsize=11)
+    ax.set_xlabel("Annual carry cost (% of portfolio, calm months)")
+    ax.set_ylabel("ES95 reduction (percentage points)")
+    ax.grid(True, color=COLORS["muted"], alpha=0.4, lw=0.5)
+    _save(fig, filename)
+    return ax
