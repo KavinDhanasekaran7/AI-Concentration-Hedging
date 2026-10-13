@@ -1,0 +1,21 @@
+# Cached raw downloads (never committed; re-downloaded on demand)
+data/raw/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Environment / secrets
+.env
+*.venv
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db

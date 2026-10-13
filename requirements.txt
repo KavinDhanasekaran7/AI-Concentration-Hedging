@@ -1,0 +1,11 @@
+# Pinned to major versions. Only these dependencies are used in the project.
+pandas>=2.0,<3.0
+numpy>=1.26,<3.0
+scipy>=1.11,<2.0
+statsmodels>=0.14,<1.0
+matplotlib>=3.7,<4.0
+yfinance>=0.2.40,<1.0
+requests>=2.31,<3.0
+jupyter>=1.0,<2.0
+nbconvert>=7.0,<8.0
+pytest>=8.0,<9.0
