@@ -130,6 +130,7 @@ KEN_FRENCH_MISSING: tuple[float, ...] = (-99.99, -999.0)
 # --------------------------------------------------------------------------- #
 # SEC EDGAR access
 # --------------------------------------------------------------------------- #
-# EDGAR requires a descriptive User-Agent. Kavin fills in the real name/email.
-SEC_USER_AGENT: str = "Your Name your.email@example.com"
+# EDGAR requires a descriptive User-Agent with real contact info to identify the
+# requester. Change this to your own name/email if you fork the project.
+SEC_USER_AGENT: str = "Kavin Dhanasekaran kd3384@nyu.edu"
 SEC_REQUEST_SLEEP_SECONDS: float = 0.15   # be polite: >= 0.15 s between requests
