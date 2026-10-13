@@ -55,3 +55,63 @@ def plot_concentration_over_time(concentration: pd.Series,
     ax.grid(True, color=COLORS["muted"], alpha=0.4, lw=0.5)
     _save(fig, filename)
     return ax
+
+
+def plot_tail_share_vs_concentration(share_by_dial: pd.Series,
+                                     filename: str = "tail_share_vs_concentration.png") -> plt.Axes:
+    """Plot the top sleeve's share of tail (ES95) loss against the dial level.
+
+    Args:
+        share_by_dial: ES95 tail-share indexed by dial level (fraction).
+        filename: output PNG name.
+    Returns:
+        The Matplotlib Axes.
+    """
+    levels = share_by_dial.index.to_numpy()
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+    ax.plot(levels, levels, color=COLORS["neutral"], ls="--", lw=1,
+            label="If tail loss matched sleeve weight")
+    ax.plot(levels, share_by_dial.to_numpy(), color=COLORS["accent"], marker="o", lw=2,
+            label="Actual sleeve share of ES95 loss")
+    ax.axvline(config.DIAL_MARKET_LEVEL, color=COLORS["highlight"], lw=1.2, alpha=0.9)
+    ax.text(config.DIAL_MARKET_LEVEL, ax.get_ylim()[0], "  ≈ today's market",
+            color=COLORS["highlight"], va="bottom", fontsize=9)
+    ax.set_title("More concentration, more of the tail loss comes from the top names",
+                 fontsize=11)
+    ax.set_xlabel("Top-sleeve weight (concentration dial)")
+    ax.set_ylabel("Top-sleeve share of worst-5%-day loss (ES95)")
+    ax.yaxis.set_major_formatter(lambda x, _: f"{x:.0%}")
+    ax.xaxis.set_major_formatter(lambda x, _: f"{x:.0%}")
+    ax.grid(True, color=COLORS["muted"], alpha=0.4, lw=0.5)
+    ax.legend(frameon=False, fontsize=9)
+    _save(fig, filename)
+    return ax
+
+
+def plot_enb_calm_vs_stress(enb_table: pd.DataFrame,
+                            filename: str = "enb_calm_vs_stress.png") -> plt.Axes:
+    """Plot the effective number of bets, full sample versus stress episodes.
+
+    Args:
+        enb_table: DataFrame indexed by regime with one column per dial level.
+        filename: output PNG name.
+    Returns:
+        The Matplotlib Axes.
+    """
+    fig, ax = plt.subplots(figsize=(10, 5))
+    colors = dict(zip(enb_table.columns, DIAL_SEQUENCE))
+    x = range(len(enb_table.index))
+    width = 0.8 / len(enb_table.columns)
+    for j, level in enumerate(enb_table.columns):
+        offsets = [i + j * width for i in x]
+        ax.bar(offsets, enb_table[level].to_numpy(), width=width,
+               color=colors[level], label=f"dial {level:.0%}")
+    ax.set_title("Effective number of bets collapses toward one in stress", fontsize=11)
+    ax.set_ylabel("Effective number of bets (Meucci)")
+    ax.set_xticks([i + 0.4 - width / 2 for i in x])
+    ax.set_xticklabels(enb_table.index, rotation=30, ha="right", fontsize=8)
+    ax.axhline(1.0, color=COLORS["neutral"], lw=0.8, ls=":")
+    ax.grid(True, axis="y", color=COLORS["muted"], alpha=0.4, lw=0.5)
+    ax.legend(frameon=False, fontsize=8, ncol=4)
+    _save(fig, filename)
+    return ax

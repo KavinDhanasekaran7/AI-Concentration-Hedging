@@ -111,6 +111,34 @@ def expected_shortfall(returns: pd.Series, level: float) -> float:
     return float(tail.mean()) if not tail.empty else float("nan")
 
 
+def cumulative_return(returns: pd.Series, start: str | None = None,
+                      end: str | None = None) -> float:
+    """Total compounded simple return over an optional date window.
+
+    Args:
+        returns: periodic simple returns.
+        start: optional ISO window start (inclusive).
+        end: optional ISO window end (inclusive).
+    Returns:
+        Compounded return over the window (NaN if the window has no data).
+    """
+    window = returns.loc[start:end].dropna()
+    return float((1.0 + window).prod() - 1.0) if not window.empty else float("nan")
+
+
+def stress_episode_returns(returns: pd.Series,
+                           episodes: list[tuple[str, str, str]]) -> dict[str, float]:
+    """Compounded return in each named stress episode.
+
+    Args:
+        returns: periodic simple returns.
+        episodes: list of (label, start, end).
+    Returns:
+        Dict mapping each episode label to the compounded return over its window.
+    """
+    return {label: cumulative_return(returns, start, end) for label, start, end in episodes}
+
+
 def summary_metrics(returns: pd.Series, periods_per_year: int,
                     risk_free: pd.Series | float = 0.0) -> dict[str, float]:
     """Bundle the headline performance and tail metrics for a return series.
